@@ -469,8 +469,8 @@ Terminal.prototype.bindPaste = function(document) {
         return;
       }
 
-      target.style.left = event.pageX - 5 + 'px';
-      target.style.top = event.pageY - 5 + 'px';
+      target.style.left = event.pageX + 'px';
+      target.style.top = event.pageY + 'px';
       target.focus();
       event.preventDefault();
     }
@@ -487,8 +487,14 @@ Terminal.prototype.bindPaste = function(document) {
     if (ev.clipboardData) {
       this.send(ev.clipboardData.getData('text/plain'));
       this.focus();
+      return cancel(ev);
+    } else {
+      setTimeout(function() { // Defer until onPaste() is done
+        this.send(target.value);
+        target.value = ''
+        this.focus();
+      }.bind(this), 100);
     }
-    return cancel(ev);
   }.bind(this));
 };
 
