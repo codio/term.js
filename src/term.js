@@ -488,11 +488,17 @@ Terminal.bindPaste = function(document) {
 
   on(this.element, 'mousedown', function (event) {
     if (event.button === 2) {
-      if (window.getSelection ? window.getSelection.toString() : false) {
-        return;
+      var selection;
+
+      if (window.getSelection) {
+        selection = window.getSelection().toString();
       }
 
-      if (document.selection ? document.selection.createRange().text : false) {
+      if (document.selection) {
+        selection = document.selection.createRange().text;
+      }
+
+      if (selection) {
         return;
       }
 
