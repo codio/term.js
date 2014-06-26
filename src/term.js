@@ -488,6 +488,14 @@ Terminal.bindPaste = function(document) {
 
   on(this.element, 'mousedown', function (event) {
     if (event.button === 2) {
+      if (window.getSelection ? window.getSelection.toString() : false) {
+        return;
+      }
+
+      if (document.selection ? document.selection.createRange().text : false) {
+        return;
+      }
+
       target.style.left = event.pageX - 5 + 'px';
       target.style.top = event.pageY - 5 + 'px';
       target.focus();
