@@ -417,13 +417,15 @@ Terminal.prototype.focus = function() {
   var self = this;
   self.inputElement.focus();
 
-  if (Terminal.focus !== this && Terminal.focus) {
-    Terminal.focus.cursorState = 0;
-    Terminal.focus.refresh(Terminal.focus.y, Terminal.focus.y);
-    if (Terminal.focus.sendFocus) Terminal.focus.send('\x1b[I');
-    Terminal.focus = this;
+  if (Terminal.focus !== this) {
+    if (Terminal.focus) {
+      Terminal.focus.cursorState = 0;
+      Terminal.focus.refresh(Terminal.focus.y, Terminal.focus.y);
+      if (Terminal.focus.sendFocus) Terminal.focus.send('\x1b[I');
+      Terminal.focus = this;
+    }
     this.showCursor();
-  };
+  }
 };
 
 Terminal.prototype.blur = function() {
