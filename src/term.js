@@ -454,9 +454,9 @@ Terminal.bindKeys = function(document) {
   if (!Terminal.focus) {
     var self = this;
 
-    on(self.inputElement, 'keydown', function (ev) {
+    on(self.document, 'keydown', function (ev) {
       return self.keyDown(ev);
-    }, true);
+    }, false);
 
     on(self.inputElement, 'keypress', function (ev) {
       return self.keyPress(ev);
