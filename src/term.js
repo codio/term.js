@@ -2237,6 +2237,8 @@ Terminal.prototype.writeln = function(data) {
 // Key Resources:
 // https://developer.mozilla.org/en-US/docs/DOM/KeyboardEvent
 Terminal.prototype.keyDown = function(ev) {
+  if (document.activeElement !== this.inputElement) return;
+
   var self = this
     , key;
 
