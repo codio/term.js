@@ -464,9 +464,9 @@ Terminal.prototype.initGlobal = function() {
   }
   Terminal._boundDocs.push(document);
 
-  Terminal.bindPaste(document);
+  Terminal.bindPaste.bind(this)(document);
 
-  Terminal.bindKeys(document);
+  Terminal.bindPaste.bind(this)(document);
 
   Terminal.bindCopy(document);
 
@@ -484,19 +484,30 @@ Terminal.prototype.initGlobal = function() {
  */
 
 Terminal.bindPaste = function(document) {
+  var target = this.clipboardTarget;
+
+  on(this.element, 'mousedown', function (event) {
+    if (event.button === 2) {
+      target.style.left = event.pageX - 5 + 'px';
+      target.style.top = event.pageY - 5 + 'px';
+      target.focus();
+      event.preventDefault();
+    }
+  });
+
+  on(document, 'mousemove', function (event) {
+    target.style.left = target.style.top = '';
+  });
+
   // This seems to work well for ctrl-V and middle-click,
   // even without the contentEditable workaround.
-  var window = document.defaultView;
-  on(window, 'paste', function(ev) {
+  on(target, 'paste', function(ev) {
     var term = Terminal.focus;
     if (!term) return;
     if (ev.clipboardData) {
       term.send(ev.clipboardData.getData('text/plain'));
-    } else if (term.context.clipboardData) {
-      term.send(term.context.clipboardData.getData('Text'));
+      term.element.focus();
     }
-    // Not necessary. Do it anyway for good measure.
-    term.element.contentEditable = 'inherit';
     return cancel(ev);
   });
 };
@@ -518,9 +529,16 @@ Terminal.bindKeys = function(document) {
         || target === Terminal.focus.body
         || target === Terminal._textarea
         || target === Terminal.focus.parent) {
+
+      //Bind Shift+Ins
+      //(ev.keyCode === 86 && ev.ctrlKey) ||
+      if (ev.keyCode === 45 && ev.shiftKey) {
+        return this.clipboardTarget.focus();
+      }
+
       return Terminal.focus.keyDown(ev);
     }
-  }, true);
+  }.bind(this), true);
 
   on(document, 'keypress', function(ev) {
     if (!Terminal.focus) return;
@@ -707,6 +725,20 @@ Terminal.prototype.open = function(parent) {
   this.element.style.backgroundColor = this.colors[256];
   this.element.style.color = this.colors[257];
 
+  this.clipboardTarget = document.createElement('textarea');
+  this.clipboardTarget.className = 'clipboard';
+  this.clipboardTarget.setAttribute('tabindex', 0);
+  this.clipboardTarget.style.position = 'fixed';
+  this.clipboardTarget.style.zIndex = 100;
+  this.clipboardTarget.style.left = 0;
+  this.clipboardTarget.style.top = 0;
+  this.clipboardTarget.style.border = 0;
+  this.clipboardTarget.style.width = '120px';
+  this.clipboardTarget.style.height = '120px';
+  this.clipboardTarget.style.padding = 0;
+  this.clipboardTarget.style.opacity = 0;
+  this.parent.appendChild(this.clipboardTarget);
+
   // Create the lines for our terminal.
   this.children = [];
   for (; i < this.rows; i++) {
@@ -746,30 +778,6 @@ Terminal.prototype.open = function(parent) {
   on(this.element, 'mousedown', function() {
     self.focus();
   });
-
-  // Clickable paste workaround, using contentEditable.
-  // This probably shouldn't work,
-  // ... but it does. Firefox's paste
-  // event seems to only work for textareas?
-  on(this.element, 'mousedown', function(ev) {
-    var button = ev.button != null
-      ? +ev.button
-      : ev.which != null
-        ? ev.which - 1
-        : null;
-
-    // Does IE9 do this?
-    if (self.isMSIE) {
-      button = button === 1 ? 0 : button === 4 ? 1 : button;
-    }
-
-    if (button !== 2) return;
-
-    self.element.contentEditable = 'true';
-    setTimeout(function() {
-      self.element.contentEditable = 'inherit'; // 'false';
-    }, 1);
-  }, true);
 
   // Listen for mouse events and translate
   // them into terminal mouse protocols.
