@@ -447,6 +447,53 @@ Terminal.prototype.blur = function() {
 };
 
 /**
+* Bind to paste event
+*/
+
+Terminal.prototype.bindPaste = function(document) {
+  var target = this.clipboardTarget;
+
+  on(this.element, 'mousedown', function (event) {
+    if (event.button === 2) {
+      var selection;
+
+      if (window.getSelection) {
+        selection = window.getSelection().toString();
+      }
+
+      if (document.selection) {
+        selection = document.selection.createRange().text;
+      }
+
+      if (selection) {
+        return;
+      }
+
+      target.style.left = event.pageX - 5 + 'px';
+      target.style.top = event.pageY - 5 + 'px';
+      target.focus();
+      event.preventDefault();
+    }
+  });
+
+
+  on(document, 'mousemove', function (event) {
+    target.style.left = target.style.top = '';
+  });
+
+  // This seems to work well for ctrl-V and middle-click,
+  // even without the contentEditable workaround.
+  on(target, 'paste', function(ev) {
+    if (ev.clipboardData) {
+      this.send(ev.clipboardData.getData('text/plain'));
+      this.focus();
+    }
+    return cancel(ev);
+  }.bind(this));
+};
+
+
+/**
  * Global Events for key handling
  */
 
@@ -561,6 +608,21 @@ Terminal.prototype.open = function(parent) {
   this.element.style.backgroundColor = this.colors[256];
   this.element.style.color = this.colors[257];
 
+  this.clipboardTarget = document.createElement('textarea');
+  this.clipboardTarget.className = 'clipboard';
+  this.clipboardTarget.setAttribute('tabindex', 0);
+  this.clipboardTarget.style.position = 'fixed';
+  this.clipboardTarget.style.zIndex = 100;
+  this.clipboardTarget.style.left = 0;
+  this.clipboardTarget.style.top = 0;
+  this.clipboardTarget.style.border = 0;
+  this.clipboardTarget.style.width = '120px';
+  this.clipboardTarget.style.height = '120px';
+  this.clipboardTarget.style.padding = 0;
+  this.clipboardTarget.style.opacity = 0;
+  this.parent.appendChild(this.clipboardTarget);
+
+
   // Create the lines for our terminal.
   this.children = [];
   for (; i < this.rows; i++) {
@@ -583,28 +645,13 @@ Terminal.prototype.open = function(parent) {
   // Draw the screen.
   this.refresh(0, this.rows - 1);
 
+  this.bindPaste.bind(this)(document);
+
   // Bind all key listeners.
   this.bindKeys();
 
   // Ensure there is a Terminal.focus.
   this.focus();
-
-  on(this.element, 'mousedown', function (ev) {
-    ev = null != ev.button ? +ev.button : null != ev.which ? ev.which - 1 : null;
-    if (~navigator.userAgent.indexOf('MSIE')) ev = 1 === ev ? 0 : 4 === ev ? 1 : ev;
-    if (2 === ev) {
-      self.element.contentEditable = 'true';
-      setTimeout(function () {
-        self.element.contentEditable = 'inherit';
-      }, 1);
-    }
-  }, true);
-
-  on(this.inputElement, 'paste', function (ev) {
-    setTimeout(function () {
-      self.commitInput('', ev);
-    }, 20);
-  });
 
   // Start blinking the cursor.
   this.startBlink();
@@ -2403,12 +2450,10 @@ Terminal.prototype.keyDown = function(ev) {
     default:
       // a-z and space
       if (ev.ctrlKey && !ev.altKey) {
-        if (!this.isMac && ev.shiftKey && 86 === ev.keyCode) {
-          key = '';
-          setTimeout(function () {
-            self.commitInput('', ev);
-          }, 20);
-        } else {
+          if (!this.isMac && 86 === ev.keyCode) {
+            key = '';
+            this.clipboardTarget.focus();
+          } else {
           if (ev.keyCode >= 65 && ev.keyCode <= 90) {
             key = String.fromCharCode(ev.keyCode - 64);
           } else if (ev.keyCode === 32) {
@@ -2430,9 +2475,7 @@ Terminal.prototype.keyDown = function(ev) {
         }
       } else if (this.isMac && ev.metaKey && 86 === ev.keyCode) {
         key = '';
-        setTimeout(function () {
-          self.commitInput('', ev);
-        }, 20);
+        this.clipboardTarget.focus();
       } else if (!ev.ctrlKey && (!this.isMac && ev.altKey || this.isMac && ev.metaKey)) {
         if (ev.keyCode >= 65 && ev.keyCode <= 90) {
           key = '\x1b' + String.fromCharCode(ev.keyCode + 32);
